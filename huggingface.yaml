@@ -1,0 +1,14 @@
+app_id: elected
+title: ElectED - Election Education Assistant
+sdk: auto
+emoji: 🗳️
+colorFrom: navy
+colorTo: gold
+license: MIT
+tags:
+  - election
+  - civic-education
+  - ai
+  - democracy
+  - voting
+description: AI-powered election process education assistant with quiz, facts, and multilingual support.

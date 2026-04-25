@@ -1219,26 +1219,53 @@ Would you like details on a specific amendment?`
 
 function findBestResponse(msg) {
   msg = msg.toLowerCase();
-  const keywords = {
-    voting: ['voting', 'vote', 'ballot', 'poll', 'cast'],
-    registration: ['regist', 'register', 'enroll', 'sign up'],
-    timeline: ['timeline', 'schedule', 'when', 'dates', 'process'],
-    electoral: ['electoral', 'elector', 'college', 'electors'],
-    gerrymandering: ['gerrymand', 'district', 'redistrict', 'maps', 'boundaries'],
-    primary: ['primary', 'primaries', 'caucus', 'nominat'],
-    absentee: ['mail', 'absentee', 'by mail', 'postal', 'drop box'],
-    security: ['security', 'secure', 'fraud', 'hack', 'safe'],
-    federal: ['president', 'congress', 'senate', 'house', 'representative'],
-    local: ['local', 'city', 'county', 'mayor', 'sheriff'],
-    amendment: ['amendment', 'constitution', 'constitutional', 'bill of right']
+
+  // ── Country-specific keywords checked FIRST ──────────────────────────────
+  // This ensures "How does voting work in India?" returns India content,
+  // not the generic US voting guide.
+  const countryKeywords = {
+    "india-evm":               ['evm', 'vvpat', 'electronic voting machine'],
+    "india-voter-id":          ['voter id', 'epic card', 'nvsp'],
+    "india-election-commission": ['election commission', 'eci ', 'chief election'],
+    "india-candidates":        ['lok sabha candidate', 'nomination india', 'india candidate'],
+    "india-parties":           ['bjp', 'congress party', 'aap ', 'aam aadmi', 'trinamool', 'shiv sena', 'samajwadi', 'bsp ', 'bahujan'],
+    "india-states":            ['state election', 'assembly election', 'uttar pradesh', 'maharashtra', 'west bengal', 'tamil nadu', 'karnataka', 'gujarat', 'delhi election'],
+    "india-voting":            ['vote in india', 'voting in india', 'how india', 'india vote', 'india voting', 'indian election'],
+    india:                     ['india', 'indian', 'bharat', 'lok sabha', 'rajya sabha', 'modi', 'eci'],
+    "uk-elections":            ['uk election', 'united kingdom', 'britain', 'westminster', 'labour', 'conservative', 'tory', 'parliament uk'],
+    "germany-elections":       ['germany', 'german', 'bundestag', 'merkel', 'scholz', 'cdu', 'spd ', 'bundesrat'],
+    "france-elections":        ['france', 'french', 'macron', 'le pen', 'élysée', 'assemblée'],
+    "australia-elections":     ['australia', 'australian', 'compulsory voting', 'preferential', 'irv australia'],
+    "canada-elections":        ['canada', 'canadian', 'riding', 'trudeau', 'liberal party', 'ndp', 'bloc québécois'],
   };
-  
+
+  for (const [key, words] of Object.entries(countryKeywords)) {
+    if (words.some(w => msg.includes(w))) {
+      return knowledgeBase[key];
+    }
+  }
+
+  // ── Generic topic keywords ────────────────────────────────────────────────
+  const keywords = {
+    voting:         ['voting', 'vote', 'ballot', 'poll', 'cast'],
+    registration:   ['regist', 'register', 'enroll', 'sign up'],
+    timeline:       ['timeline', 'schedule', 'dates', 'process'],
+    electoral:      ['electoral', 'elector', 'college', 'electors'],
+    gerrymandering: ['gerrymand', 'district', 'redistrict', 'maps', 'boundaries'],
+    primary:        ['primary', 'primaries', 'caucus', 'nominat'],
+    absentee:       ['mail', 'absentee', 'by mail', 'postal', 'drop box'],
+    security:       ['security', 'secure', 'fraud', 'hack', 'safe'],
+    federal:        ['president', 'congress', 'senate', 'house', 'representative'],
+    local:          ['local', 'city', 'county', 'mayor', 'sheriff'],
+    amendment:      ['amendment', 'constitution', 'constitutional', 'bill of right']
+  };
+
   for (const [key, words] of Object.entries(keywords)) {
     if (words.some(w => msg.includes(w))) {
       return knowledgeBase[key];
     }
   }
-  
+
   return `### Welcome to ElectED! 🗳️
 
 I'm your election education assistant. I can help you understand:
