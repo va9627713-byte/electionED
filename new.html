@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en" role="document">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElectED — Election Process Education</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #1a2744;
+      --navy-light: #243360;
+      --gold: #d4a843;
+      --gold-light: #f0c96a;
+      --bg: #f8f7f4;
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --text: #1a1a1a;
+      --text-muted: #6b6b6b;
+      --text-faint: #9e9e9e;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: white;
+      padding: 0 1.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .logo-badge {
+      width: 38px; height: 38px;
+      background: var(--gold);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .logo-text h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.03em;
+    }
+
+    .logo-text p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 1px;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .lang-badge {
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .lang-badge:hover { background: rgba(255,255,255,0.18); }
+
+    .polling-input {
+      width: 100%; border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px; font-size: 13px; margin-bottom: 10px; outline: none;
+      background: #fafaf8;
+    }
+    .polling-results { font-size: 12px; margin-top: 10px; color: var(--text-muted); }
+
+    /* ── Layout ── */
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .sidebar-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .sidebar-card h3 {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+
+    .topic-btn {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 7px 10px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.12s;
+      line-height: 1.4;
+    }
+
+    .topic-btn:hover { background: #f0ede5; }
+
+    .topic-btn .icon {
+      font-size: 15px;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .timeline-mini {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .tl-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 6px 0;
+      position: relative;
+    }
+
+    .tl-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--navy);
+      flex-shrink: 0;
+      margin-top: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tl-line-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .tl-line {
+      width: 2px;
+      height: 100%;
+      background: #ddd;
+      flex: 1;
+      margin-top: 2px;
+    }
+
+    .tl-content h4 { font-size: 12px; font-weight: 500; }
+    .tl-content p { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    /* ── Chat panel ── */
+    .chat-panel {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      height: 620px;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 12px 16px;
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #3cb77a;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .chat-header span {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .chat-header .counter {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .chips-row {
+      padding: 10px 14px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      border-bottom: 0.5px solid var(--border);
+      background: #fafaf8;
+    }
+
+    .chip {
+      background: white;
+      border: 0.5px solid var(--border);
+      border-radius: 16px;
+      padding: 4px 11px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.13s;
+      font-family: 'DM Sans', sans-serif;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      animation: fadeUp 0.2s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user { flex-direction: row-reverse; }
+
+    .av {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .av.ai { background: var(--navy); color: var(--gold); font-family: 'Playfair Display', serif; }
+    .av.user { background: #e8f0fe; color: #1a56c4; }
+
+    .bbl {
+      max-width: 76%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .bbl.ai {
+      background: #f5f4f0;
+      border: 0.5px solid var(--border);
+      border-top-left-radius: 3px;
+      color: var(--text);
+    }
+
+    .bbl.user {
+      background: var(--navy);
+      color: white;
+      border-top-right-radius: 3px;
+    }
+
+    .bbl strong { color: var(--navy); font-weight: 500; }
+    .bbl.user strong { color: var(--gold); }
+
+    .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #aaa; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-5px); }
+    }
+
+    .input-bar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 0.5px solid var(--border);
+    }
+
+    .chat-input {
+      flex: 1;
+      border: 0.5px solid #d0cfc8;
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      background: #fafaf8;
+      color: var(--text);
+      outline: none;
+      transition: border 0.15s;
+    }
+
+    .chat-input:focus { border-color: var(--navy); background: white; }
+
+    .send-btn {
+      width: 40px; height: 40px;
+      background: var(--navy);
+      color: var(--gold);
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text-faint);
+      border-top: 0.5px solid var(--border);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .chat-panel { height: calc(100vh - 120px); }
+    }
+
+    /* ── Clear chat btn ── */
+    .clear-btn {
+      background: none;
+      border: 0.5px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 11px;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .clear-btn:hover { color: #c0392b; border-color: #c0392b; }
+
+    /* ── Timeline column wrapper ── */
+    .tl-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 14px;
+    }
+
+    /* ── Timeline connector line ── */
+    .tl-connector {
+      width: 2px;
+      flex: 1;
+      background: #ddd;
+      margin-top: 2px;
+      min-height: 20px;
+    }
+
+    /* ── Timeline dot color variations ── */
+    .tl-dot-navy { background: #1a2744; }
+    .tl-dot-navy-light { background: #2a4a8a; }
+    .tl-dot-orange { background: #c9912a; }
+    .tl-dot-gold { background: #d4a843; }
+    .tl-dot-green { background: #3cb77a; }
+
+    /* ── Footer link ── */
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-badge">🗳️</div>
+  <div class="logo-text">
+    <h1>ElectED</h1>
+    <p>Election Process Education Assistant</p>
+  </div>
+  <div class="header-right">
+    <span class="lang-badge" title="Powered by Google Translate API">🌐 Translate</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <h3>Quick Topics</h3>
+      <button class="topic-btn" onclick="ask('How does the voting process work step by step?')">
+        <span class="icon">🗳️</span> How voting works
+      </button>
+      <button class="topic-btn" onclick="ask('What is voter registration and how do I register?')">
+        <span class="icon">📋</span> Voter registration
+      </button>
+      <button class="topic-btn" onclick="ask('Explain the full election timeline from start to finish')">
+        <span class="icon">📅</span> Election timeline
+      </button>
+      <button class="topic-btn" onclick="ask('How are candidates nominated for elections?')">
+        <span class="icon">🙋</span> Candidate nominations
+      </button>
+      <button class="topic-btn" onclick="ask('What are the different types of elections?')">
+        <span class="icon">🏛️</span> Types of elections
+      </button>
+      <button class="topic-btn" onclick="ask('How are votes counted and results declared?')">
+        <span class="icon">🔢</span> Vote counting
+      </button>
+      <button class="topic-btn" onclick="ask('What is the Electoral College and how does it work?')">
+        <span class="icon">⚖️</span> Electoral College
+      </button>
+      <button class="topic-btn" onclick="ask('What is gerrymandering and how does it affect elections?')">
+        <span class="icon">🗺️</span> Gerrymandering
+      </button>
+      <button class="topic-btn" onclick="ask('What are absentee and mail-in ballots?')">
+        <span class="icon">✉️</span> Mail-in ballots
+      </button>
+      <button class="topic-btn" onclick="ask('How is election integrity and security maintained?')">
+        <span class="icon">🔒</span> Election security
+      </button>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>Polling Place Finder</h3>
+      <input type="text" id="addressInput" class="polling-input" placeholder="Enter your full address...">
+      <button class="topic-btn" data-action="findPollingPlace">
+        Find Location
+      </button>
+      <div id="pollingResults" class="polling-results"></div>
+      <div id="mapContainer" class="polling-map-container">
+        <iframe id="mapFrame" width="100%" height="100%" frameborder="0" style="border:0" allowfullscreen></iframe>
+      </div>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>Election Stages</h3>
+      <div class="timeline-mini">
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-navy"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Registration</h4><p>Voters enroll to vote</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-navy-light"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Nomination</h4><p>Candidates are selected</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-orange"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Campaign</h4><p>Candidates make their case</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-gold"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Election Day</h4><p>Citizens cast their votes</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-green"></div>
+          </div>
+          <div class="tl-content"><h4>Certification</h4><p>Results are verified & certified</p></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Chat Panel -->
+  <section class="chat-panel" aria-label="Election education chat" role="region">
+    <div class="chat-header">
+      <div class="status-dot"></div>
+      <span>ElectED Assistant</span>
+      <div class="counter" id="turnCount">0 questions asked</div>
+      <button class="clear-btn" data-action="clearChat">Clear</button>
+      <button class="clear-btn" data-action="downloadTranscript">Download Transcript</button>
+    </div>
+
+    <div class="chips-row">
+      <span class="chip" onclick="ask('How do I vote for the first time?')">First time voter</span>
+      <span class="chip" onclick="ask('What is a primary election?')">Primary elections</span>
+      <span class="chip" onclick="ask('Explain proportional representation')">Proportional rep</span>
+      <span class="chip" onclick="ask('What happens after election day?')">After election day</span>
+      <span class="chip" onclick="ask('How do elections differ between countries?')">Global elections</span>
+    </div>
+
+    <div class="messages" id="messages" aria-live="polite" aria-atomic="false">
+      <div class="msg">
+        <div class="av ai">E</div>
+        <div class="bbl ai">
+          Welcome to <strong>ElectED</strong>! 🗳️<br><br>
+          I'm your civic education guide. Ask me anything about how elections work — voter registration, candidate nominations, ballot types, counting methods, electoral systems, and more.<br><br>
+          You can type a question below, pick a topic from the sidebar, or tap a quick chip above. Where would you like to start?
+        </div>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <input
+        class="chat-input"
+        id="userInput"
+        placeholder="Ask about elections, voting, timelines..."
+        onkeydown="handleKey(event)"
+        autocomplete="off"
+      />
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send">
+        ➤
+      </button>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  ElectED · Built for PromptWars Challenge 2 · Powered by Google Gemini AI · <a href="https://github.com/va9627713-byte/elected" target="_blank" rel="noopener noreferrer">GitHub</a>
+</footer>
+
+<script>
+  let messages = [];
+  let loading = false;
+  let turns = 0;
+
+  function ask(text) {
+    document.getElementById('userInput').value = text;
+    sendMessage();
+  }
+
+  async function findPollingPlace() {
+    const address = document.getElementById('addressInput').value;
+    const resultsDiv = document.getElementById('pollingResults');
+    const mapContainer = document.getElementById('mapContainer');
+    const mapFrame = document.getElementById('mapFrame');
+    if (!address) return alert("Please enter your address first.");
+
+    resultsDiv.innerHTML = "Searching for your polling station...";
+    
+    try {
+      const res = await fetch('/api/voter-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address })
+      });
+      const data = await res.json();
+
+      if (data.success && data.data.pollingLocations) {
+        const loc = data.data.pollingLocations[0];
+        resultsDiv.innerHTML = `
+          <div style="color:var(--navy); font-weight:500; margin-bottom:4px;">📍 Found Location:</div>
+          <strong>${loc.address.locationName}</strong><br>
+          ${loc.address.line1}, ${loc.address.city}<br>
+          <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address.locationName + ' ' + loc.address.line1)}" target="_blank" style="color:var(--gold); text-decoration:none; font-size:11px;">Get Directions ↗</a>
+        `;
+      } else {
+        resultsDiv.innerHTML = "No polling locations found. Try a more specific address.";
+      }
+    } catch (e) {
+      resultsDiv.innerHTML = "Error connecting to Civic API.";
+    }
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !loading) sendMessage();
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (!text || loading) return;
+
+    loading = true;
+    input.value = '';
+    document.getElementById('sendBtn').disabled = true;
+
+    // Add a hidden hint about the current UI language to help the AI stay consistent
+    const currentLang = document.getElementById('languageSelect').value;
+    if (currentLang !== 'en' && messages.length === 0) {
+      text = `[Please respond in the language code: ${currentLang}] ${text}`;
+    }
+
+    appendMsg('user', text);
+    messages.push({ role: 'user', content: text });
+
+    const typingId = appendTyping();
+    scrollBottom();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, userId: currentUser ? currentUser.id : null })
+      });
+
+      const data = await res.json();
+      removeTyping(typingId);
+
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+
+      const reply = data.reply;
+      appendMsg('ai', reply);
+      messages.push({ role: 'assistant', content: reply });
+
+      turns++;
+      document.getElementById('turnCount').textContent =
+        turns === 1 ? '1 question asked' : `${turns} questions asked`;
+
+    } catch (err) {
+      removeTyping(typingId);
+      appendMsg('ai', 'Sorry, something went wrong. Please try again in a moment.');
+    }
+
+    loading = false;
+    document.getElementById('sendBtn').disabled = false;
+    scrollBottom();
+  }
+
+  function appendMsg(role, text) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+
+    const av = document.createElement('div');
+    av.className = `av ${role}`;
+    av.textContent = role === 'ai' ? 'E' : 'Y';
+
+    const bbl = document.createElement('div');
+    bbl.className = `bbl ${role}`;
+    bbl.innerHTML = formatText(text);
+
+    div.appendChild(av);
+    div.appendChild(bbl);
+    container.appendChild(div);
+  }
+
+  function formatText(t) {
+    let formatted = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+    formatted = formatted.replace(/^- (.*)/gm, '<li>$1</li>'); // Basic list items
+    if (formatted.includes('<li>')) {
+      formatted = `<ul>${formatted}</ul>`; // Wrap lists in ul
+    }
+    return formatted.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+  }
+
+  function appendTyping() {
+    const id = 'typing-' + Date.now();
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg';
+    div.id = id;
+    div.innerHTML = `<div class="av ai">E</div><div class="bbl ai"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    container.appendChild(div);
+    return id;
+  }
+
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  function scrollBottom() {
+    const msgs = document.getElementById('messages');
+    setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 50);
+  }
+
+  function clearChat() {
+    messages = [];
+    turns = 0;
+    document.getElementById('turnCount').textContent = '0 questions asked';
+    const container = document.getElementById('messages');
+    container.innerHTML = `<div class="msg">
+      <div class="av ai">E</div>
+      <div class="bbl ai">Chat cleared! Ask me anything about elections and the voting process. 🗳️</div>
+    </div>`;
+  }
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html lang="en" role="document">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElectED — Election Process Education</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗳️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap" />
+  
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Google Analytics (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    // Replace G-XXXXXXXXXX with your actual Measurement ID
+    gtag('config', 'G-XXXXXXXXXX', {
+      'anonymize_ip': true,
+      'cookie_flags': 'SameSite=None;Secure'
+    });
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: rgba(26, 39, 68, 0.9);
+      --navy-light: rgba(36, 51, 96, 0.8);
+      --gold: #d4a843;
+      --gold-light: #f0c96a;
+      --bg: #0a0e1a; /* Darker background to make 3D stand out */
+      --glass: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --surface: #ffffff;
+      --border: rgba(0,0,0,0.1);
+      --text: #1a1a1a;
+      --text-muted: #6b6b6b;
+      --text-faint: #9e9e9e;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    #canvas-3d {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+
+    /* ── Header ── */
+    header {
+      background: rgba(26, 39, 68, 0.95);
+      backdrop-filter: blur(10px);
+      color: white;
+      padding: 0 1.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .logo-badge {
+      width: 38px; height: 38px;
+      background: var(--gold);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+      transform-style: preserve-3d;
+    }
+
+    .logo-text h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.03em;
+    }
+
+    .logo-text p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      margin-top: 1px;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-profile {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: white;
+    }
+
+    .progress-container {
+      margin-top: 10px;
+      background: rgba(0,0,0,0.05);
+      height: 8px; border-radius: 4px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; background: var(--gold);
+      width: 0%; transition: width 0.5s ease;
+    }
+    .leader-item { display: flex; justify-content: space-between; font-size: 13px; margin-top: 5px; }
+
+    .polling-input {
+      width: 100%; border: 1px solid var(--glass-border); border-radius: 6px;
+      padding: 8px; font-size: 13px; margin-bottom: 10px; outline: none;
+      background: rgba(255,255,255,0.5);
+    }
+    .polling-results { font-size: 12px; margin-top: 10px; color: var(--text-muted); }
+    .polling-map-container {
+      margin-top: 12px;
+      height: 160px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      display: none;
+    }
+
+    .lang-select {
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: white;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .lang-select option { background: var(--navy); color: white; }
+
+    /* ── Layout ── */
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .sidebar-card {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .sidebar-card h3 {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+
+    .topic-btn {
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      padding: 7px 10px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.12s;
+      line-height: 1.4;
+    }
+
+    .topic-btn:hover { background: #f0ede5; }
+
+    .topic-btn .icon {
+      font-size: 15px;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .timeline-mini {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .tl-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 6px 0;
+      position: relative;
+    }
+
+    .tl-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--navy);
+      flex-shrink: 0;
+      margin-top: 4px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tl-line-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .tl-line {
+      width: 2px;
+      height: 100%;
+      background: #ddd;
+      flex: 1;
+      margin-top: 2px;
+    }
+
+    .tl-content h4 { font-size: 12px; font-weight: 500; }
+    .tl-content p { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    /* ── Chat panel ── */
+    .chat-panel {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      height: 620px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+
+    .feedback-area {
+      padding: 15px; border-top: 1px solid var(--border);
+      background: #fafaf8; display: none;
+    }
+    .sentiment-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 20px; font-size: 12px;
+      color: white; font-weight: bold; margin-top: 8px;
+    }
+
+    .chat-header {
+      padding: 12px 16px;
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #3cb77a;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .chat-header span {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .chat-header .counter {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .chips-row {
+      padding: 10px 14px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      border-bottom: 0.5px solid var(--border);
+      background: #fafaf8;
+    }
+
+    .chip {
+      background: white;
+      border: 0.5px solid var(--border);
+      border-radius: 16px;
+      padding: 4px 11px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.13s;
+      font-family: 'DM Sans', sans-serif;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      animation: fadeUp 0.2s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user { flex-direction: row-reverse; }
+
+    .av {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .av.ai { background: var(--navy); color: var(--gold); font-family: 'Playfair Display', serif; }
+    .av.user { background: #e8f0fe; color: #1a56c4; }
+
+    .bbl {
+      max-width: 76%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .bbl.ai {
+      background: #f5f4f0;
+      border: 0.5px solid var(--border);
+      border-top-left-radius: 3px;
+      color: var(--text);
+    }
+
+    .bbl.user {
+      background: var(--navy);
+      color: white;
+      border-top-right-radius: 3px;
+    }
+
+    .bbl strong { color: var(--navy); font-weight: 500; }
+    .bbl.user strong { color: var(--gold); }
+
+    .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #aaa; animation: bounce 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-5px); }
+    }
+
+    .input-bar {
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 0.5px solid var(--border);
+    }
+
+    .chat-input {
+      flex: 1;
+      border: 0.5px solid #d0cfc8;
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      background: #fafaf8;
+      color: var(--text);
+      outline: none;
+      transition: border 0.15s;
+    }
+
+    .chat-input:focus { border-color: var(--navy); background: white; }
+
+    .send-btn {
+      width: 40px; height: 40px;
+      background: var(--navy);
+      color: var(--gold);
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover { opacity: 0.85; }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 12px;
+      font-size: 11px;
+      color: var(--text-faint);
+      border-top: 0.5px solid var(--border);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .chat-panel { height: calc(100vh - 120px); }
+    }
+
+    /* ── Clear chat btn ── */
+    .clear-btn {
+      background: none;
+      border: 0.5px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 9px;
+      font-size: 11px;
+      color: var(--text-faint);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .clear-btn:hover { color: #c0392b; border-color: #c0392b; }
+
+    /* ── Timeline column wrapper ── */
+    .tl-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 14px;
+    }
+
+    /* ── Timeline connector line ── */
+    .tl-connector {
+      width: 2px;
+      flex: 1;
+      background: #ddd;
+      margin-top: 2px;
+      min-height: 20px;
+    }
+
+    /* ── Timeline dot color variations ── */
+    .tl-dot-navy { background: #1a2744; }
+    .tl-dot-navy-light { background: #2a4a8a; }
+    .tl-dot-orange { background: #c9912a; }
+    .tl-dot-gold { background: #d4a843; }
+    .tl-dot-green { background: #3cb77a; }
+
+    /* ── Footer link ── */
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+<canvas id="canvas-3d"></canvas>
+
+<header>
+  <div class="logo-badge" id="logo-3d">🗳️</div>
+  <div class="logo-text">
+    <h1>ElectED</h1>
+    <p>Election Process Education Assistant</p>
+  </div>
+  <div class="header-right">
+    <div id="g_id_onload"
+         data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+    <div id="userProfile" class="user-profile"></div>
+    <select class="lang-select" id="languageSelect" data-action="changeLanguage" title="Select language" aria-label="Language Selection">
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="zh">中文</option>
+      <option value="pt">Português</option>
+      <option value="ru">Русский</option>
+      <option value="ar">العربية</option>
+    </select>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <h3>Quick Topics</h3>
+      <button class="topic-btn" onclick="ask('How does the voting process work step by step?')">
+        <span class="icon">🗳️</span> How voting works
+      </button>
+      <button class="topic-btn" onclick="ask('What is voter registration and how do I register?')">
+        <span class="icon">📋</span> Voter registration
+      </button>
+      <button class="topic-btn" onclick="ask('Explain the full election timeline from start to finish')">
+        <span class="icon">📅</span> Election timeline
+      </button>
+      <button class="topic-btn" onclick="ask('How are candidates nominated for elections?')">
+        <span class="icon">🙋</span> Candidate nominations
+      </button>
+      <button class="topic-btn" onclick="ask('What are the different types of elections?')">
+        <span class="icon">🏛️</span> Types of elections
+      </button>
+      <button class="topic-btn" onclick="ask('How are votes counted and results declared?')">
+        <span class="icon">🔢</span> Vote counting
+      </button>
+      <button class="topic-btn" onclick="ask('What is the Electoral College and how does it work?')">
+        <span class="icon">⚖️</span> Electoral College
+      </button>
+      <button class="topic-btn" onclick="ask('What is gerrymandering and how does it affect elections?')">
+        <span class="icon">🗺️</span> Gerrymandering
+      </button>
+      <button class="topic-btn" onclick="ask('What are absentee and mail-in ballots?')">
+        <span class="icon">✉️</span> Mail-in ballots
+      </button>
+      <button class="topic-btn" onclick="ask('How is election integrity and security maintained?')">
+        <span class="icon">🔒</span> Election security
+      </button>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>Election Stages</h3>
+      <div class="timeline-mini">
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-navy"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Registration</h4><p>Voters enroll to vote</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-navy-light"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Nomination</h4><p>Candidates are selected</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-orange"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Campaign</h4><p>Candidates make their case</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-gold"></div>
+            <div class="tl-connector"></div>
+          </div>
+          <div class="tl-content"><h4>Election Day</h4><p>Citizens cast their votes</p></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-col">
+            <div class="tl-dot tl-dot-green"></div>
+          </div>
+          <div class="tl-content"><h4>Certification</h4><p>Results are verified & certified</p></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Chat Panel -->
+  <section class="chat-panel" aria-label="Election education chat" role="region">
+    <div class="chat-header">
+      <div class="status-dot"></div>
+      <span>ElectED Assistant</span>
+      <div class="counter" id="turnCount">0 questions asked</div>
+      <button class="clear-btn" onclick="clearChat()">Clear</button>
+    </div>
+
+    <div class="chips-row">
+      <span class="chip" onclick="ask('How do I vote for the first time?')">First time voter</span>
+      <span class="chip" onclick="ask('What is a primary election?')">Primary elections</span>
+      <span class="chip" onclick="ask('Explain proportional representation')">Proportional rep</span>
+      <span class="chip" onclick="ask('What happens after election day?')">After election day</span>
+      <span class="chip" onclick="ask('How do elections differ between countries?')">Global elections</span>
+    </div>
+
+    <div class="messages" id="messages" aria-live="polite" aria-atomic="false">
+      <div class="msg">
+        <div class="av ai">E</div>
+        <div class="bbl ai">
+          Welcome to <strong>ElectED</strong>! 🗳️<br><br>
+          I'm your civic education guide. Ask me anything about how elections work — voter registration, candidate nominations, ballot types, counting methods, electoral systems, and more.<br><br>
+          You can type a question below, pick a topic from the sidebar, or tap a quick chip above. Where would you like to start?
+        </div>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <input
+        class="chat-input"
+        id="userInput"
+        placeholder="Ask about elections, voting, timelines..."
+        onkeydown="handleKey(event)"
+        autocomplete="off"
+      />
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" aria-label="Send">
+        ➤
+      </button>
+    </div>
+  </section>
+
+  <div id="feedbackForm" class="sidebar-card" style="margin-top:20px; display:block;">
+    <h3>Help us improve</h3>
+    <textarea id="feedbackText" placeholder="How was the AI response?" style="width:100%; border-radius:5px; padding:8px; border:1px solid #ddd;"></textarea>
+    <button class="topic-btn" style="background:var(--navy); color:white; margin-top:8px;" onclick="submitFeedback()">Submit Feedback</button>
+    <div id="sentimentResult"></div>
+  </div>
+
+</main>
+
+<footer>
+  ElectED · Built for PromptWars Challenge 2 · Powered by Google Gemini AI · <a href="https://github.com/va9627713-byte/elected" target="_blank" rel="noopener noreferrer">GitHub</a>
+</footer>
+
+<script>
+  let messages = [];
+  let loading = false;
+  let turns = 0;
+
+  // ── Three.js Implementation ──
+  const init3D = () => {
+    const canvas = document.querySelector('#canvas-3d');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
+
+    // Particle System
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particlesCount = 1500;
+    const posArray = new Float32Array(particlesCount * 3);
+    for(let i=0; i < particlesCount * 3; i++) {
+      posArray[i] = (Math.random() - 0.5) * 15;
+    }
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const particlesMaterial = new THREE.PointsMaterial({
+      size: 0.015,
+      color: 0xd4a843,
+      transparent: true,
+      opacity: 0.8
+    });
+    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particlesMesh);
+
+    // Orbital Sphere (The Planet)
+    const sphereGeom = new THREE.SphereGeometry(1, 32, 32);
+    const sphereMat = new THREE.MeshPhongMaterial({ 
+      color: 0x1a2744, 
+      emissive: 0x111111,
+      specular: 0xd4a843,
+      shininess: 100,
+      wireframe: true 
+    });
+    const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+    scene.add(sphere);
+
+    // Lights
+    const light = new THREE.PointLight(0xffffff, 50, 100);
+    light.position.set(2, 2, 2);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      sphere.rotation.y += 0.005;
+      particlesMesh.rotation.y += 0.001;
+      renderer.render(scene, camera);
+    };
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    animate();
+  };
+
+  // ── Polling Place Logic ──
+  async function findPollingPlace() {
+    const address = document.getElementById('addressInput').value;
+    const resultsDiv = document.getElementById('pollingResults');
+    if (!address) return alert("Please enter your address first.");
+
+    resultsDiv.innerHTML = "Searching for your polling station...";
+    
+    try {
+      const res = await fetch('/api/voter-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address })
+      });
+      const data = await res.json();
+
+      if (data.success && data.data.pollingLocations) {
+        const loc = data.data.pollingLocations[0];
+        const addr = loc.address;
+        const fullAddress = `${addr.line1}, ${addr.city}, ${addr.state || ''}`;
+        
+        resultsDiv.innerHTML = `
+          <div style="color:var(--navy); font-weight:500; margin-bottom:4px;">📍 Found Location:</div>
+          <strong>${addr.locationName}</strong><br>
+          ${addr.line1}, ${addr.city}
+        `;
+
+        // Fetch the API key from the server config to avoid hardcoding
+        const configRes = await fetch('/api/config');
+        const config = await configRes.json();
+        
+        if (config.mapsKey) {
+          mapFrame.src = `https://www.google.com/maps/embed/v1/place?key=${config.mapsKey}&q=${encodeURIComponent(fullAddress)}`;
+        }
+        mapContainer.style.display = 'block';
+      } else {
+        resultsDiv.innerHTML = "No polling locations found. Please check your address format.";
+        mapContainer.style.display = 'none';
+      }
+    } catch (e) {
+      resultsDiv.innerHTML = "Error connecting to Civic API.";
+      mapContainer.style.display = 'none';
+    }
+  }
+
+  // ── Multi-language Support ──
+  async function changeLanguage(targetLang) {
+    if (targetLang === 'en') return location.reload(); // Reset to default
+
+    const elementsToTranslate = [
+      document.querySelector('.logo-text h1'),
+      document.querySelector('.logo-text p'),
+      document.querySelector('.chat-header span'),
+      document.querySelector('#userInput').placeholder,
+      ...document.querySelectorAll('.topic-btn'),
+      ...document.querySelectorAll('.sidebar-card h3'),
+      ...document.querySelectorAll('.tl-content h4')
+    ];
+
+    const textToTranslate = elementsToTranslate.map(el => 
+      el.tagName === 'INPUT' ? el.placeholder : el.innerText || el.textContent
+    );
+
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textToTranslate, target: targetLang })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        elementsToTranslate.forEach((el, i) => {
+          const translatedText = data.translations[i];
+          if (el.tagName === 'INPUT') {
+            el.placeholder = translatedText;
+          } else if (el.classList.contains('topic-btn')) {
+            // Preserve icons for buttons
+            const icon = el.querySelector('.icon').innerText;
+            el.innerHTML = `<span class="icon">${icon}</span> ${translatedText.replace(icon, '').trim()}`;
+          } else {
+            el.innerText = translatedText;
+          }
+        });
+        
+        gtag('event', 'change_language', { 'language': targetLang });
+      }
+    } catch (err) {
+      console.error("Translation failed:", err);
+      alert("Translation service is currently unavailable.");
+    }
+  }
+
+  // ── 3D Logo Effect ──
+  const initLogoEffect = () => {
+    const logo = document.getElementById('logo-3d');
+    document.addEventListener('mousemove', (e) => {
+      const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+      const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+      logo.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+    });
+  };
+
+  window.onload = () => {
+    init3D();
+    initLogoEffect();
+  };
+
+  function ask(text) {
+    // GA Tracking: Topic Selection
+    gtag('event', 'select_content', {
+      content_type: 'election_topic',
+      item_id: text
+    });
+
+    // Logic to master a topic (simplified: clicking it 1st time masters it)
+    const topicId = text.toLowerCase().split(' ').join('_');
+    if (currentUser && !masteredTopics.includes(topicId)) {
+      masteredTopics.push(topicId);
+      fetch('/api/user/master-topic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, topicId })
+      }).then(() => updateProgressUI());
+    }
+
+    document.getElementById('userInput').value = text;
+    sendMessage();
+  }
+
+  function updateProgressUI() {
+    const count = masteredTopics.length;
+    document.getElementById('masteryText').textContent = `${count}/10 Topics Mastered`;
+    document.getElementById('progressBar').style.width = `${(count / 10) * 100}%`;
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !loading) sendMessage();
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (!text || loading) return;
+
+    loading = true;
+    input.value = '';
+    document.getElementById('sendBtn').disabled = true;
+
+    appendMsg('user', text);
+    messages.push({ role: 'user', content: text });
+
+    // GA Tracking: User Message
+    gtag('event', 'chat_interaction', {
+      'event_category': 'Engagement',
+      'event_label': 'Message Sent'
+    });
+
+    const typingId = appendTyping();
+    scrollBottom();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages })
+      });
+
+      const data = await res.json();
+      removeTyping(typingId);
+
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+
+      const reply = data.reply;
+      appendMsg('ai', reply);
+      messages.push({ role: 'assistant', content: reply });
+
+      turns++;
+      document.getElementById('turnCount').textContent =
+        turns === 1 ? '1 question asked' : `${turns} questions asked`;
+
+    } catch (err) {
+      removeTyping(typingId);
+      appendMsg('ai', 'Sorry, something went wrong. Please try again in a moment.');
+    }
+
+    loading = false;
+    document.getElementById('sendBtn').disabled = false;
+    scrollBottom();
+  }
+
+  function appendMsg(role, text) {
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+
+    const av = document.createElement('div');
+    av.className = `av ${role}`;
+    av.textContent = role === 'ai' ? 'E' : 'Y';
+
+    const bbl = document.createElement('div');
+    bbl.className = `bbl ${role}`;
+    bbl.innerHTML = formatText(text);
+
+    div.appendChild(av);
+    div.appendChild(bbl);
+    container.appendChild(div);
+  }
+
+  function formatText(t) {
+    let formatted = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+    formatted = formatted.replace(/^- (.*)/gm, '<li>$1</li>'); // Basic list items
+    if (formatted.includes('<li>')) {
+      formatted = `<ul>${formatted}</ul>`; // Wrap lists in ul
+    }
+    return formatted.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+  }
+
+  function appendTyping() {
+    const id = 'typing-' + Date.now();
+    const container = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = 'msg';
+    div.id = id;
+    div.innerHTML = `<div class="av ai">E</div><div class="bbl ai"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    container.appendChild(div);
+    return id;
+  }
+
+  function removeTyping(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  function scrollBottom() {
+    const msgs = document.getElementById('messages');
+    setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 50);
+  }
+
+  // ── Download Transcript ──
+  function downloadTranscript() {
+    // GA Tracking: Download Transcript
+    gtag('event', 'download_transcript', {
+      'event_category': 'User Action',
+      'file_type': 'text'
+    });
+
+    let transcript = `ElectED Chat Transcript - ${new Date().toLocaleString()}\n\n`;
+    messages.forEach(msg => {
+      transcript += `${msg.role === 'user' ? 'You' : 'ElectED'}: ${msg.content}\n\n`;
+    });
+
+    const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `elected_chat_transcript_${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function clearChat() {
+    // GA Tracking: Clear Chat
+    gtag('event', 'reset_session', {
+      'event_category': 'User Action'
+    });
+
+    messages = [];
+    turns = 0;
+    document.getElementById('turnCount').textContent = '0 questions asked';
+    const container = document.getElementById('messages');
+    container.innerHTML = `<div class="msg">
+      <div class="av ai">E</div>
+      <div class="bbl ai">Chat cleared! Ask me anything about elections and the voting process. 🗳️</div>
+    </div>`;
+  }
+</script>
+
+</body>
+</html>
