@@ -59,6 +59,10 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+app.get("/favicon.ico", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "favicon.ico"));
+});
+
 const rateLimitMap = new Map();
 
 function rateLimit(req, res, next) {
