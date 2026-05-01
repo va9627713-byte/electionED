@@ -1,16 +1,13 @@
 const https = require("https");
-
-/**
- * ElectED - Election Process Education Assistant
- * Version: 3.0.0
- */
+const fs = require("fs");
+const path = require("path");
 
 require("dotenv").config();
 
 const express = require("express");
 const helmet = require("helmet");
 const compression = require("compression");
-const path = require("path");
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
@@ -21,87 +18,161 @@ const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : 
 
 app.disable("x-powered-by");
 
+// Security middleware
 app.use(compression());
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "default-src": ["'self'"],
+      "script-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://www.googletagmanager.com"],
+      "script-src-attr": ["'self'"],
+      "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "img-src": ["'self'", "data:", "https:"],
-      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
-      "script-src-attr": ["'self'", "'unsafe-inline'"],
-      "connect-src": ["'self'", "https://www.google-analytics.com", "https://*.google-analytics.com"],
-      "frame-ancestors": ["*"],
+      "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+      "connect-src": ["'self'", "https://www.google-analytics.com", "https://generativelanguage.googleapis.com"],
+      "frame-ancestors": ["'self'"],
+      "base-uri": ["'self'"],
+      "form-action": ["'self'"],
     },
   },
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  xFrameOptions: false,
-  crossOriginOpenerPolicy: false
+  crossOriginEmbedderPolicy: true,
+  crossOriginResourcePolicy: { policy: "same-site" },
+  xFrameOptions: { action: "deny" },
+  crossOriginOpenerPolicy: { policy: "same-origin" },
+  referrerPolicy: { policy: "no-referrer-when-downgrade" },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  noSniff: true,
+  xssFilter: true,
 }));
 
-// Comprehensive CORS for all origins and iframes
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://localhost:3000',
+  'https://election-ed.vercel.app',
+  process.env.ALLOWED_ORIGIN
+].filter(Boolean);
+
 app.use((req, res, next) => {
-  const origin = req.headers.origin || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE, PATCH");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Max-Age", "86400");
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.some(allowed => origin === allowed || origin.endsWith('.vercel.app'))) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+    res.setHeader("Access-Control-Max-Age", "3600");
+  }
   
-  // Handle preflight requests
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
   next();
 });
 
-app.use(express.json({ limit: "10kb" }));
-app.use(express.static(path.join(__dirname, "public")));
+// Static files with proper path resolution
+const isVercel = process.env.VERCEL === "1";
+const publicDir = isVercel ? path.join(process.cwd(), "public") : path.join(__dirname, "public");
 
-app.get("/favicon.ico", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "favicon.ico"));
+app.use(express.json({ limit: "10kb" }));
+app.use(express.static(publicDir));
+
+// Health check endpoint
+app.get("/_health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    version: "3.0.0",
+    environment: isVercel ? "vercel" : "local",
+    staticPath: publicDir,
+    staticExists: fs.existsSync(publicDir)
+  });
 });
 
+// Rate limiting
 const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60_000;
+const RATE_LIMIT_MAX = 30;
 
 function rateLimit(req, res, next) {
   const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
   const now = Date.now();
-  const windowMs = 60_000;
-  const maxRequests = 30;
-
+  
   if (!rateLimitMap.has(ip)) {
     rateLimitMap.set(ip, { count: 1, start: now });
     return next();
   }
-
+  
   const data = rateLimitMap.get(ip);
-  if (now - data.start > windowMs) {
+  if (now - data.start > RATE_LIMIT_WINDOW) {
     rateLimitMap.set(ip, { count: 1, start: now });
     return next();
   }
-
-  if (data.count >= maxRequests) {
+  
+  if (data.count >= RATE_LIMIT_MAX) {
     return res.status(429).json({ error: "Too many requests. Please wait a minute." });
   }
-
+  
   data.count++;
   next();
 }
 
+// Request logging
+const startTime = Date.now();
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
+
+// Input validation helpers
+const validate = {
+  required: (val, name) => {
+    if (!val) throw new Error(`${name} is required`);
+    return val;
+  },
+  string: (val, name, maxLen = 1000) => {
+    if (typeof val !== 'string') throw new Error(`${name} must be a string`);
+    if (val.length > maxLen) throw new Error(`${name} exceeds maximum length of ${maxLen}`);
+    if (val.trim().length === 0) throw new Error(`${name} cannot be empty`);
+    return val.trim();
+  },
+  minLength: (val, name, min) => {
+    if (val.length < min) throw new Error(`${name} must be at least ${min} characters`);
+    return val;
+  }
+};
+
+// Cache headers
+app.use((req, res, next) => {
+  if (req.path.match(/\.(js|css|woff2?|ttf)$/i)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (req.path.match(/\.(json|xml)$/i)) {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+  } else if (req.path === '/') {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+  }
+  next();
+});
+
+// Health endpoints
 app.get("/health", (req, res) => {
   res.json({
     success: true,
     status: "ok",
     service: "ElectED",
-    timestamp: new Date().toISOString()
+    version: "3.0.0",
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'production'
   });
 });
 
 app.get("/health/live", (req, res) => res.json({ alive: true }));
 app.get("/health/ready", (req, res) => res.json({ ready: true }));
 
+// API endpoints
 app.get("/api/topics", (req, res) => {
   res.json({ success: true, topics: [
     { id: "voting", title: "How voting works", icon: "🗳️", category: "basics" },
@@ -167,7 +238,6 @@ app.get("/api/global-systems", (req, res) => {
   ]});
 });
 
-// Search topics
 app.get("/api/search", (req, res) => {
   const { q } = req.query;
   if (!q || q.length < 2) return res.status(400).json({ error: "Query must be at least 2 characters" });
@@ -178,7 +248,6 @@ app.get("/api/search", (req, res) => {
   res.json({ success: true, query: q, results, count: results.length });
 });
 
-// Random election quote
 app.get("/api/quote", (req, res) => {
   const quotes = [
     { text: "Democracy is the worst form of government, except for all the others.", author: "Winston Churchill" },
@@ -193,7 +262,6 @@ app.get("/api/quote", (req, res) => {
   res.json({ success: true, quote: random });
 });
 
-// Election deadlines
 app.get("/api/deadlines", (req, res) => {
   res.json({ success: true, deadlines: [
     { event: "Presidential Election Day", date: "2024-11-05", daysUntil: 561 },
@@ -204,7 +272,6 @@ app.get("/api/deadlines", (req, res) => {
   ], year: 2024 });
 });
 
-// Get voting info by state
 app.get("/api/vote-info/:state", (req, res) => {
   const { state } = req.params;
   const stateInfo = {
@@ -218,14 +285,12 @@ app.get("/api/vote-info/:state", (req, res) => {
   res.json({ success: true, state: state, info });
 });
 
-// Analytics
 app.post("/api/analytics", (req, res) => {
   const { event, data } = req.body;
   console.log(`[ANALYTICS] ${event}:`, data);
   res.json({ success: true });
 });
 
-// Google Translate endpoint (free API)
 app.post("/api/translate", rateLimit, (req, res) => {
   const { text, target } = req.body;
   if (!text || !target) {
@@ -254,8 +319,8 @@ app.post("/api/translate", rateLimit, (req, res) => {
   });
 });
 
+// Knowledge base
 const knowledgeBase = {
-  // === INDIAN ELECTIONS ===
   india: `### Indian General Elections 🗳️
 
 **The World's Largest Democracy**
@@ -411,7 +476,6 @@ Want more?`,
 - Not sync with Lok Sabha
 - Different schedules
 - Some states: 5 years
-- Some states: 5 years
 
 **Election Dates:**
 - Different across states
@@ -517,7 +581,7 @@ Want more?`,
 - Congress-led
 - TMC, AAP, SP`,
 
-"india-election-commission": `### Election Commission of India 🏛️
+  "india-election-commission": `### Election Commission of India 🏛️
 
 **About ECI:**
 - Independent constitutional body
@@ -602,7 +666,6 @@ Want more?`,
 **Link with Aadhaar:**
 - Optional since 2020`,
 
-  // === ADD MORE GLOBAL CONTENT ===
   "uk-elections": `### UK General Elections 🇬🇧
 
 **The Westminster System**
@@ -760,86 +823,6 @@ Want more?`,
 - French (Bill 101)
 
 Want more?`,
-
-  voting: `### How Voting Works in America 🗳️
-5. EVM electronic voting
-6. Day after: Counting
-
-**Voter ID (EPIC)**
-- Required to vote
-- Free registration
-- Check: eci.nic.in`,
-
-  "india-voting": `### How to Vote in India 🗳️
-
-**Step 1: Register**
-- Visit nvsp.in or local Booth
-- Fill Form 6
-- Submit photo & address proof
-
-**Step 2: Get Voter ID (EPIC)**
-- Received after verification
-- Check name in electoral roll
-
-**Step 3: Find Polling Station**
-- Check voter list online
-- Usually within 2km
-- Polling hours: 7am-6pm
-
-**Documents:**
-- Aadhaar (optional)
-- Any government ID
-- Proof of residence`,
-
-  "india-parties": `### Major Parties in India 🇮🇳
-
-**National Parties:**
-
-**Bharatiya Janata Party (BJP)**
-- Founded: 1980
-- Symbol: Lotus 🌸
-
-**Indian National Congress**
-- Founded: 1885
-- Symbol: Hand ✋
-
-**Regional Parties:**
-
-**Aam Aadmi Party (AAP)**
-- Founded: 2012
-- Symbol: Broom
-
-**All India Trinamool Congress**
-- West Bengal
-- Symbol: Flowers
-
-**Shiv Sena**
-- Maharashtra
-- Symbol: Bow & Arrow`,
-
-  "india-states": `### State Elections in India 🏛️
-
-**Key State Assemblies:**
-
-**Uttar Pradesh (403 seats)**
-- Most populous state
-- Direct Modi's vote
-
-**Maharashtra (288 seats)**
-- Financial capital
-- NCP, Shiv Sena, BJP
-
-**West Bengal (294 seats)**
-- TMC dominant
-- Didi vs BJP
-
-**Tamil Nadu (234 seats)**
-- Dravidian parties
-- ADMK, DMK
-
-**Delhi (70 seats)**
-- AAP stronghold
-- Assembly elections`,
 
   voting: `### How Voting Works in America 🗳️
 
@@ -1224,49 +1207,35 @@ Would you like details on a specific amendment?`
 function findBestResponse(msg) {
   msg = msg.toLowerCase();
 
-  // ── Country-specific keywords checked FIRST ──────────────────────────────
-  // This ensures "How does voting work in India?" returns India content,
-  // not the generic US voting guide.
   const countryKeywords = {
-    "india-evm":               ['evm', 'vvpat', 'electronic voting machine'],
-    "india-voter-id":          ['voter id', 'epic card', 'nvsp'],
-    "india-election-commission": ['election commission', 'eci ', 'chief election'],
-    "india-candidates":        ['lok sabha candidate', 'nomination india', 'india candidate'],
-    "india-parties":           ['bjp', 'congress party', 'aap ', 'aam aadmi', 'trinamool', 'shiv sena', 'samajwadi', 'bsp ', 'bahujan'],
-    "india-states":            ['state election', 'assembly election', 'uttar pradesh', 'maharashtra', 'west bengal', 'tamil nadu', 'karnataka', 'gujarat', 'delhi election'],
-    "india-voting":            ['vote in india', 'voting in india', 'how india', 'india vote', 'india voting', 'indian election'],
-    india:                     ['india', 'indian', 'bharat', 'lok sabha', 'rajya sabha', 'modi', 'eci'],
-    "uk-elections":            ['uk election', 'united kingdom', 'britain', 'westminster', 'labour', 'conservative', 'tory', 'parliament uk'],
-    "germany-elections":       ['germany', 'german', 'bundestag', 'merkel', 'scholz', 'cdu', 'spd ', 'bundesrat'],
-    "france-elections":        ['france', 'french', 'macron', 'le pen', 'élysée', 'assemblée'],
-    "australia-elections":     ['australia', 'australian', 'compulsory voting', 'preferential', 'irv australia'],
-    "canada-elections":        ['canada', 'canadian', 'riding', 'trudeau', 'liberal party', 'ndp', 'bloc québécois'],
+    "india": ['india', 'indian', 'bharat', 'lok sabha', 'rajya sabha', 'modi', 'eci', 'evm', 'vvpat', 'election commission', 'epic card', 'nvsp', 'voting in india'],
   };
 
   for (const [key, words] of Object.entries(countryKeywords)) {
     if (words.some(w => msg.includes(w))) {
-      return knowledgeBase[key];
+      const response = knowledgeBase[key];
+      if (response) return response;
     }
   }
 
-  // ── Generic topic keywords ────────────────────────────────────────────────
   const keywords = {
-    voting:         ['voting', 'vote', 'ballot', 'poll', 'cast'],
-    registration:   ['regist', 'register', 'enroll', 'sign up'],
-    timeline:       ['timeline', 'schedule', 'dates', 'process'],
-    electoral:      ['electoral', 'elector', 'college', 'electors'],
+    voting: ['voting', 'vote', 'ballot', 'poll', 'cast'],
+    registration: ['regist', 'register', 'enroll', 'sign up'],
+    timeline: ['timeline', 'schedule', 'dates', 'process'],
+    electoral: ['electoral', 'elector', 'college', 'electors'],
     gerrymandering: ['gerrymand', 'district', 'redistrict', 'maps', 'boundaries'],
-    primary:        ['primary', 'primaries', 'caucus', 'nominat'],
-    absentee:       ['mail', 'absentee', 'by mail', 'postal', 'drop box'],
-    security:       ['security', 'secure', 'fraud', 'hack', 'safe'],
-    federal:        ['president', 'congress', 'senate', 'house', 'representative'],
-    local:          ['local', 'city', 'county', 'mayor', 'sheriff'],
-    amendment:      ['amendment', 'constitution', 'constitutional', 'bill of right']
+    primary: ['primary', 'primaries', 'caucus', 'nominat'],
+    absentee: ['mail', 'absentee', 'by mail', 'postal', 'drop box'],
+    security: ['security', 'secure', 'fraud', 'hack', 'safe'],
+    federal: ['president', 'congress', 'senate', 'house', 'representative'],
+    local: ['local', 'city', 'county', 'mayor', 'sheriff'],
+    amendment: ['amendment', 'constitution', 'constitutional', 'bill of right']
   };
 
   for (const [key, words] of Object.entries(keywords)) {
     if (words.some(w => msg.includes(w))) {
-      return knowledgeBase[key];
+      const response = knowledgeBase[key];
+      if (response) return response;
     }
   }
 
@@ -1290,7 +1259,7 @@ I'm your election education assistant. I can help you understand:
 
 **More:**
 • 📜 Constitutional amendments
-• 📊 Your rights
+• 🇮🇳 Indian elections
 
 Ask me anything about elections! What would you like to learn about?`;
 }
@@ -1310,54 +1279,57 @@ Guidelines:
 Topics you excel at: voter registration, voting methods, electoral systems, gerrymandering, primaries, mail-in ballots, election security, Electoral College, global elections, constitutional amendments, campaign finance, redistricting.`;
 
 app.post("/api/chat", rateLimit, async (req, res) => {
-  const { messages } = req.body;
+  try {
+    const { messages } = req.body;
 
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ error: "messages array is required" });
-  }
-
-  if (messages.length >= 25) {
-    return res.status(400).json({ error: "Too many messages (max 25)" });
-  }
-
-  for (const m of messages) {
-    if (!m.role || !m.content || typeof m.content !== "string") {
-      return res.status(400).json({ error: "Each message must have role and content" });
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "messages array is required" });
     }
-    if (!["user", "assistant"].includes(m.role)) {
-      return res.status(400).json({ error: "Message role must be user or assistant" });
+
+    if (messages.length >= 25) {
+      return res.status(400).json({ error: "Too many messages (max 25)" });
     }
-  }
 
-  const lastUserMsg = messages[messages.length - 1]?.content || "";
-  const sanitizedInput = lastUserMsg.replace(/[<>]/g, "").slice(0, 600);
-
-  // Try real Gemini AI first
-  if (model) {
-    try {
-      const history = messages.slice(0, -1).map(m => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }]
-      }));
-      const chat = model.startChat({
-        history,
-        systemInstruction: SYSTEM_PROMPT,
-        generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
-      });
-      const result = await chat.sendMessage(sanitizedInput);
-      const reply = result.response.text();
-      return res.json({ success: true, reply, demo: false, model: "gemini-1.5-flash" });
-    } catch (aiErr) {
-      console.error("[Gemini error, falling back]", aiErr.message);
-      // Fall through to keyword fallback
+    for (const m of messages) {
+      if (!m.role || !m.content || typeof m.content !== "string") {
+        return res.status(400).json({ error: "Each message must have role and content" });
+      }
+      if (!["user", "assistant"].includes(m.role)) {
+        return res.status(400).json({ error: "Message role must be user or assistant" });
+      }
     }
-  }
 
-  // Keyword fallback (works without API key)
-  const reply = findBestResponse(lastUserMsg);
-  res.json({ success: true, reply, demo: true });
+    const lastUserMsg = messages[messages.length - 1]?.content || "";
+    const sanitizedInput = validate.string(lastUserMsg, "User input", 600);
+
+    if (model) {
+      try {
+        const history = messages.slice(0, -1).map(m => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }]
+        }));
+        const chat = model.startChat({
+          history,
+          systemInstruction: SYSTEM_PROMPT,
+          generationConfig: { maxOutputTokens: 600, temperature: 0.7 }
+        });
+        const result = await chat.sendMessage(sanitizedInput);
+        const reply = result.response.text();
+        return res.json({ success: true, reply, demo: false, model: "gemini-1.5-flash" });
+      } catch (aiErr) {
+        console.error("[Gemini error, falling back]", aiErr.message);
+      }
+    }
+
+    const reply = findBestResponse(lastUserMsg);
+    res.json({ success: true, reply, demo: true, model: "keyword-fallback" });
+  } catch (err) {
+    console.error("[API Chat Error]", err.message);
+    res.status(500).json({ error: "Chat service temporarily unavailable", details: err.message });
+  }
 });
-// ── QUIZ API ──────────────────────────────────────────────────
+
+// Quiz API
 const quizBank = [
   // Registration (0-4)
   { id:0, topic:"registration", q:"What is the typical voter registration deadline before US election day?", opts:["Same day","7 days","15–30 days","60 days"], ans:2, exp:"Most US states require registration 15–30 days before Election Day, though some allow same-day registration." },
@@ -1381,6 +1353,8 @@ const quizBank = [
   { id:15, topic:"global", q:"Which electoral system gives legislative seats proportional to each party's vote share?", opts:["First-Past-The-Post","Ranked Choice Voting","Proportional Representation","Two-Round System"], ans:2, exp:"In PR systems like Germany and Netherlands, if a party wins 30% of votes, it gets roughly 30% of seats." },
   { id:16, topic:"global", q:"Which country has compulsory (mandatory) voting for its citizens?", opts:["United States","United Kingdom","Australia","Canada"], ans:2, exp:"Australia has had compulsory voting since 1924. Eligible citizens who fail to vote without a valid reason can be fined." },
   { id:17, topic:"global", q:"What is India's Lok Sabha?", opts:["Upper house of Parliament","Lower house of Parliament (House of the People)","India's Supreme Court","India's Election Commission"], ans:1, exp:"Lok Sabha is the lower house of India's bicameral Parliament, with 543 directly elected seats filled using First-Past-The-Post." },
+  { id:18, topic:"global", q:"Which system requires a candidate to win over 50% to avoid a runoff?", opts:["First-Past-The-Post","Two-Round System","Proportional Representation","Mixed Member"], ans:1, exp:"The Two-Round System (used in France and many others) requires a second 'runoff' election if no candidate wins a majority." },
+  { id:19, topic:"global", q:"In which country do citizens vote for a party list, not individual candidates?", opts:["United States","United Kingdom","Israel","Australia"], ans:2, exp:"Israel uses a pure Proportional Representation system where voters choose a party, and seats are allocated based on vote share." },
   // India (30-39)
   { id:30, topic:"india", q:"How many total seats are in India's Lok Sabha?", opts:["435","543","600","525"], ans:1, exp:"543 elected members + 2 nominated Anglo-Indian (abolished in 2019) = 543 seats filled by FPTP." },
   { id:31, topic:"india", q:"What is the minimum voting age in India?", opts:["21","18","25","16"], ans:1, exp:"India lowered voting age from 21 to 18 in 1988." },
@@ -1410,109 +1384,42 @@ const quizBank = [
   { id:60, topic:"canada", q:"How many seats in Canadian Parliament?", opts:["308","338","350","400"], ans:1, exp:"338 seats in the House of Commons after 2015 redistribution." },
   { id:61, topic:"canada", q:"What is Canada's voting system?", opts:["Proportional","Mixed Member","First-Past-The-Post","Ranked Choice"], ans:2, exp:"Canada uses FPTP - candidate with most votes wins the seat." },
   { id:62, topic:"canada", q:"Who won 2021 Canadian federal election?", opts:["Conservatives","Liberals","NDP","Bloc Québécois"], ans:1, exp:"Liberals won minority government in 2021 under Trudeau." },
-  { id:18, topic:"global", q:"Which system requires a candidate to win over 50% to avoid a runoff?", opts:["First-Past-The-Post","Two-Round System","Proportional Representation","Mixed Member"], ans:1, exp:"The Two-Round System (used in France and many others) requires a second 'runoff' election if no candidate wins a majority." },
-  { id:19, topic:"global", q:"In which country do citizens vote for a party list, not individual candidates?", opts:["United States","United Kingdom","Israel","Australia"], ans:2, exp:"Israel uses a pure Proportional Representation system where voters choose a party, and seats are allocated based on vote share." },
   // Security & Process (20-24)
   { id:20, topic:"security", q:"What does VVPAT stand for in election security?", opts:["Verified Voter Paper Audit Trail","Voter Validated Paper Audit Trail","Voluntary Voting Paper Authentication Tracker","Verified Voting Paper Authorization Tag"], ans:1, exp:"Voter Verified Paper Audit Trail (VVPAT) is a printed record that voters can verify before submitting their ballot electronically." },
   { id:21, topic:"security", q:"Which federal agency certifies US voting systems?", opts:["FBI","DHS","Election Assistance Commission (EAC)","FEC"], ans:2, exp:"The U.S. Election Assistance Commission (EAC) certifies voting systems to voluntary federal standards under HAVA (2002)." },
-  { id:22, topic:"security", q:"What is 'chain of custody' in elections?", opts:["The legal process for challenging results","A documented trail showing who handled ballots at every stage","The order in which candidates appear on the ballot","The sequence of election officials who certify results"], ans:1, exp:"Chain of custody is a documented record of everyone who handled ballots, ensuring no unauthorized access or tampering occurred." },
-  { id:23, topic:"security", q:"What is gerrymandering's 'packing' tactic?", opts:["Spreading opposition voters thinly across many districts","Concentrating opposition voters into a few districts","Creating oddly shaped districts to confuse voters","Removing incumbents from safe districts"], ans:1, exp:"Packing concentrates opposition voters into a few districts so they 'waste' votes winning by huge margins, weakening their influence elsewhere." },
-  { id:24, topic:"security", q:"How often does congressional redistricting occur in the US?", opts:["Every 2 years","Every 4 years","Every 10 years (after the Census)","Every 6 years"], ans:2, exp:"Redistricting happens every 10 years following the decennial Census, which reapportions House seats based on population changes." },
-  // Primaries & Process (25-29)
-  { id:25, topic:"primary", q:"What is a 'closed primary'?", opts:["A primary where polls close early","Only registered party members may vote","A primary with only two candidates","A primary for judicial elections only"], ans:1, exp:"In closed primaries, only voters registered with a party can vote in that party's primary election (e.g., Florida, New York)." },
-  { id:26, topic:"primary", q:"What is 'Super Tuesday'?", opts:["The night election results are called","The day the most primary states vote simultaneously","The first day of early voting","The day electoral votes are counted in Congress"], ans:1, exp:"Super Tuesday is typically in March, when the largest number of states hold presidential primary elections simultaneously." },
-  { id:27, topic:"primary", q:"In ranked choice voting (RCV), when is a candidate eliminated?", opts:["When they are in last place after all first-choice votes","When they win a majority","After every round regardless of rank","When they get less than 25% of votes"], ans:0, exp:"In RCV, the candidate with the fewest first-choice votes is eliminated each round and those voters' second choices are redistributed." },
-  { id:28, topic:"primary", q:"What is a 'caucus' in US elections?", opts:["A type of absentee ballot","A public meeting where voters openly declare their candidate preference","A private ballot for party leadership","A debate between candidates"], ans:1, exp:"Caucuses are community meetings where voters publicly gather in groups to show support for candidates; Iowa's caucus is historically famous." },
-  { id:29, topic:"primary", q:"What percentage of delegates does a candidate typically need to secure a party nomination?", opts:["25%","Over 50%","Two-thirds","75%"], ans:1, exp:"A candidate needs a simple majority (over 50%) of delegates at the party convention to secure the presidential nomination on the first ballot." }
+  { id:22, topic:"security", q:"What is 'chain of custody' in elections?", opts:["The legal process for challenging results","A documented trail showing who handled ballots at every stage","The order in which candidates appear on the ballot","The sequence of election officials who certify results"], ans:1, exp:"Chain of custody is a documented record of everyone who handled ballots, ensuring no unauthorized access or tampering occurred." }
 ];
 
 app.get("/api/quiz", (req, res) => {
-  const { topic, count = 5 } = req.query;
-  let pool = quizBank;
-  if (topic) pool = quizBank.filter(q => q.topic === topic);
-  const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, Math.min(+count, 10));
-  // Strip answers before sending
-  const safe = shuffled.map(({ id, topic, q, opts }) => ({ id, topic, q, opts }));
-  res.json({ success: true, questions: safe, total: shuffled.length });
-});
-
-app.post("/api/quiz/validate", rateLimit, (req, res) => {
-  const { id, answer } = req.body;
-  if (id === undefined || answer === undefined) {
-    return res.status(400).json({ error: "id and answer are required" });
+  const { topic, limit = 5 } = req.query;
+  let filtered = quizBank;
+  
+  if (topic) {
+    filtered = quizBank.filter(q => q.topic === topic);
   }
-  const question = quizBank.find(q => q.id === +id);
-  if (!question) return res.status(404).json({ error: "Question not found" });
-  const correct = +answer === question.ans;
-  res.json({ success: true, correct, correctAnswer: question.ans, explanation: question.exp });
+  
+  const shuffled = [...filtered].sort(() => Math.random() - 0.5).slice(0, parseInt(limit));
+  res.json({ success: true, questions: shuffled, total: filtered.length });
 });
 
-app.post("/api/feedback", rateLimit, (req, res) => {
-  const { rating, feedback, question } = req.body;
-  if (!rating || ![1, 2, 3, 4, 5].includes(rating)) {
-    return res.status(400).json({ error: "Invalid rating" });
+app.get("/api/quiz/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const question = quizBank.find(q => q.id === id);
+  
+  if (!question) {
+    return res.status(404).json({ error: "Quiz question not found" });
   }
-  console.log(`[FEEDBACK] Rating: ${rating}/5 | Q: ${question} | FB: ${feedback}`);
-  res.json({ success: true, message: "Thank you for your feedback!" });
+  
+  res.json({ success: true, question });
 });
 
-app.get("/api/facts", (req, res) => {
-  res.json({ success: true, facts: [
-    { fact: "India has the world's largest electorate with 900+ million voters", category: "india" },
-    { fact: "Australia was first to introduce compulsory voting in 1924", category: "australia" },
-    { fact: "US Electoral College has 538 votes, 270 needed to win", category: "us" },
-    { fact: "France uses Two-Round System for presidential elections", category: "france" },
-    { fact: "Germany's Bundestag has 598 seats", category: "germany" },
-    { fact: "UK voting age lowered from 21 to 18 in 1969", category: "uk" },
-    { fact: "Canada has 338 electoral districts", category: "canada" },
-    { fact: "NOTA introduced in India in 2013", category: "india" }
-  ]});
-});
-
-// Election Timeline API
-app.get("/api/timeline", (req, res) => {
-  res.json({ success: true, timeline: [
-    { stage: 1, name: "Voter Registration", description: "Citizens enroll as eligible voters", months: "6-0 before" },
-    { stage: 2, name: "Candidate Nomination", description: "Parties and independents declare candidacy", months: "6-3 before" },
-    { stage: 3, name: "Campaign Period", description: "Candidates campaign through rallies and debates", months: "3-1 before" },
-    { stage: 4, name: "Voting Day", description: "Registered voters cast ballots", months: "0" },
-    { stage: 5, name: "Vote Counting", description: "Ballots are tallied with observers present", months: "0-1 after" },
-    { stage: 6, name: "Certification", description: "Results certified and winner declared", months: "1-4 after" }
-  ]});
-});
-
-// Global Election Comparison API
-app.get("/api/compare", (req, res) => {
-  res.json({ success: true, countries: [
-    { name: "India", seats: 543, system: "FPTP", votingAge: 18, compulsory: false },
-    { name: "USA", seats: 538, system: "Electoral College", votingAge: 18, compulsory: false },
-    { name: "UK", seats: 650, system: "FPTP", votingAge: 18, compulsory: false },
-    { name: "Germany", seats: 598, system: "Mixed Member", votingAge: 18, compulsory: false },
-    { name: "France", seats: 577, system: "Two-Round", votingAge: 18, compulsory: false },
-    { name: "Australia", seats: 150, system: "IRV", votingAge: 18, compulsory: true },
-    { name: "Canada", seats: 338, system: "FPTP", votingAge: 18, compulsory: false },
-    { name: "Japan", seats: 465, system: "Mixed Member", votingAge: 18, compulsory: false }
-  ]});
-});
-
-app.use("/api/*", (req, res) => {
-  res.status(404).json({ error: "API endpoint not found" });
-});
-
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({ error: "Something went wrong" });
-});
-
-// Only bind port when running as a real server (not during Jest tests)
-if (process.env.NODE_ENV !== "test") {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`✅ ElectED running on http://localhost:${PORT}`);
+// Start server if not in test or Vercel environment
+const isTest = process.env.NODE_ENV === 'test';
+if (!isTest && !isVercel) {
+  app.listen(PORT, () => {
+    console.log(`ElectED server running on http://localhost:${PORT}`);
   });
 }
 
+// Export for Vercel
 module.exports = app;
